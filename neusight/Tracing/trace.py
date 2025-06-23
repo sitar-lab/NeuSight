@@ -203,10 +203,11 @@ def trace_fx_graph(batch_size, sequence_length, model_config_path, is_train, ben
         node_dict = []
         for n in graphmodule.graph.nodes:
             nd = n.__dict__.copy()
-            nd["Name"] = nd.pop("name")
+            nd["Name"] = n.name
             node_dict.append(nd)
         df = pd.DataFrame(node_dict)
-        df = df.drop("graph", axis=1)
+        if 'graph' in df.columns:
+            df = df.drop("graph", axis=1)
 
         nodeprop = NodeProp(graphmodule)
         if "switch" in model_name: # 
@@ -218,7 +219,7 @@ def trace_fx_graph(batch_size, sequence_length, model_config_path, is_train, ben
             input_ids = torch.ones(batch_size, sequence_length, dtype=torch.int64, device=device)
             inputs = [input_ids]
         graphmodule = nodeprop.propagate(*inputs, backward=is_train, bench=bench)
-        # print("node proped", flush=True)
+        print("node proped", flush=True)
     except Exception as e:
         raise e
         print(e)
@@ -229,10 +230,14 @@ def trace_fx_graph(batch_size, sequence_length, model_config_path, is_train, ben
     node_dict = []
     for n in graphmodule.graph.nodes:
         nd = n.__dict__.copy()
-        nd["Name"] = nd.pop("name")
+        nd["Name"] = n.name
+        nd["meta"] = n.meta
+        nd["_input_nodes"] = str([m.name for m in n.all_input_nodes])
+        nd["users"] = str([u for u in n.users])
         node_dict.append(nd)
     df = pd.DataFrame(node_dict)
-    df = df.drop("graph", axis=1)
+    if 'graph' in df.columns:
+        df = df.drop("graph", axis=1)
     # df.to_csv(out_name, index=False)
 
     return df
